@@ -76,14 +76,45 @@ clean_data %>%
 ## Overview
 
 First 
+https://citybase-cms-prod.s3.amazonaws.com/d95654f9a1234d87afd0724cc65172c9.pdf
+```{r impd_demo_bar}
+impd_demo_data <- tibble(race = c("Asian", "Hispanic", "Black", "White"), percent = c(0.1, 3.0, 16.0, 79.6))
+impd_demo_bar <- impd_demo_data %>%
+  ggplot(aes(x = reorder(race, percent), y = percent, fill = c("cadetblue1", "lightcoral", "khaki", "lightgreen"))) +
+  geom_bar(stat = "identity") +
+  theme(legend.position = "onenone") +
+  ylim(0, 85) +
+  geom_text(aes(label=percent), hjust=-0.15, size=3.5) + 
+  labs(x = "Race", y = "Percent of IMPD Force") +
+  coord_flip()
+# TODO: Fix colors
+```
 
-```{r ov_1, include = TRUE}
-indy_race_data <- tibble(race = c("White", "Asian", "Black", "Hispanic"), percent = c(61.4, 3.2, 28.3, 10.2))
+```{r indy_demo_bar, include = TRUE}
+indy_demo_data <- tibble(race = c("Asian", "Black", "Hispanic", "White"), percent = c(3.2, 28.3, 10.2, 61.4))
+indy_demo_bar <- indy_demo_data %>%
+  ggplot(aes(x = reorder(race, percent), y = percent, fill = c("cadetblue1", "lightcoral", "khaki", "lightgreen"))) +
+  geom_bar(stat = "identity") +
+  theme(legend.position = "onenone") +
+  geom_text(aes(label=percent), hjust=-0.15, size=3.5) + 
+  ylim(0, 85) +
+  labs(x = "Race", y = "Percent of Indianapolis Population") +
+  coord_flip()
+```
+
+
+```{r indy_demo_pie, include = TRUE}
+indy_race_data <- tibble(race = c("Asian", "Black", "Hispanic", "White"), percent = c(3.2, 28.3, 10.2, 61.4))
 pct <- round(indy_race_data$percent/sum(indy_race_data$percent)*100, 1)
 indy_race_data$race <- paste(indy_race_data$race, pct) # add percents to labels
 indy_race_data$race <- paste(indy_race_data$race,"%",sep="") # ad % to labels
-pie(indy_race_data$percent,labels = indy_race_data$race, col=c("red", "green", "yellow", "blue"),
+pie(indy_race_data$percent,labels = indy_race_data$race, col=c("cadetblue1", "lightcoral", "khaki", "lightgreen"),
    main="Indianapolis Demographics") 
+```
+https://www.census.gov/quickfacts/fact/table/indianapoliscitybalanceindiana/PST045219#qf-headnote-a
+
+
+```{r use_of_force_demo_pie, include = TRUE}
 
 race_overview <- clean_data %>%
   group_by(citizen_race) %>%
@@ -93,13 +124,104 @@ race_overview <- clean_data %>%
 pct <- round(race_overview$count/sum(race_overview$count)*100, 1)
 race_overview$citizen_race <- paste(race_overview$citizen_race, pct) # add percents to labels
 race_overview$citizen_race <- paste(race_overview$citizen_race,"%",sep="") # ad % to labels
-pie(race_overview$count,labels = race_overview$citizen_race, col=c("green", "yellow", "blue", "red"),
+pie(race_overview$count,labels = race_overview$citizen_race, col=c("cadetblue1", "lightcoral", "khaki", "lightgreen"),
    main="IMPD Uses of Force") 
 ```
-https://www.census.gov/quickfacts/fact/table/indianapoliscitybalanceindiana/PST045219#qf-headnote-a
 
 
+```{r types_of_force, include = TRUE}
+use_of_force_chart <- clean_data %>%
+  filter(type_of_force != "") %>%
+  group_by(type_of_force) %>%
+  summarize(count = n(), na.rm = TRUE) %>%
+  ggplot(aes(x = reorder(type_of_force, count), y = count)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "Type of Force Used", y = "Count", title = "IMPD Uses of Force by Type")
 
+#508 instances where type not reported
+```
+
+```{r use_of_force}
+uof_data <- clean_data %>%
+  filter(type_of_force != "") %>%
+  group_by(type_of_force) %>%
+  summarize(count = n(), na.rm = TRUE) %>%
+  arrange(-count)
+
+#for(i in 1:43){
+#  type <- uof_data[i, 1] %>%
+#    slice(1) %>%
+#    pull(1)
+#  count <- uof_data[i, 2] %>%
+#    slice(1) %>%
+#    pull(1)
+#  
+#  specific_pie_data <- clean_data %>%
+#  filter(type_of_force == type) %>%
+#  group_by(citizen_race) %>%
+#  summarize(count = n()) %>%
+#  filter(citizen_race == "Asian" | citizen_race == "Black" | citizen_race == "Hispanic" | citizen_race == "White")
+#
+#  pct <- round(specific_pie_data$count/sum(specific_pie_data$count)*100, 1)
+#  specific_pie_data$citizen_race <- paste(specific_pie_data$citizen_race, pct) # add percents to labels
+#  specific_pie_data$citizen_race <- paste(specific_pie_data$citizen_race,"%",sep="") # ad % to labels
+#  pie(specific_pie_data$count,labels = specific_pie_data$citizen_race, col = rainbow(length(specific_pie_data$citizen_race)),
+#  main=paste("Racial Breakdown: ", type, " (", count, " instances)", sep = "")) 
+#}
+
+
+for(i in 1:43){
+  type <- uof_data[i, 1] %>%
+    slice(1) %>%
+    pull(1)
+  count <- uof_data[i, 2] %>%
+    slice(1) %>%
+    pull(1)
+  
+  specific_data <- clean_data %>%
+    filter(type_of_force == type) %>%
+    group_by(citizen_race) %>%
+    summarize(count = n()) %>%
+    filter(citizen_race == "Black" | citizen_race == "White" | citizen_race == "Asian" | citizen_race == "Hispanic")
+
+  asian_add <- c("Asian", 0)
+  black_add <- c("Black", 0)
+  hispanic_add <- c("Hispanic", 0)
+  white_add <- c("White", 0)
+  
+  
+  if(length(specific_data$citizen_race) == 4){
+    new_data <- specific_data
+  }
+  else if ("Asian" %in% specific_data$citizen_race == FALSE){
+    new_data <- rbind(specific_data, asian_add)
+  }
+  else if ("Black" %in% specific_data$citizen_race == FALSE){
+    new_data <- rbind(specific_data, black_add)
+  }
+  else if ("Hispanic" %in% specific_data$citizen_race == FALSE){
+    new_data <- rbind(specific_data, hispanic_add)
+  }
+  else if ("White" %in% specific_data$citizen_race == FALSE){
+    new_data <- rbind(specific_data, white_add)
+  }
+  
+  max <- new_data %>%
+    arrange(-as.numeric(count)) %>%
+    slice(1) %>%
+    pull(2)
+  
+  graph <- new_data %>%
+    ggplot(aes(x = citizen_race, y = as.numeric(count), fill = citizen_race)) +
+    geom_bar(stat = "identity") +
+    labs(title = paste("Racial Breakdown for Force Type: ", type, " (", count, " instances)", sep = ""), x = "Citizen Race", y = "Count") +
+    ylim(0, max)
+  
+  print(graph)
+}
+
+```
 
 
 
