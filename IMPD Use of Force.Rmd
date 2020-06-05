@@ -11,19 +11,25 @@ library(tidyverse)
 library(dplyr)
 library(janitor)
 library(gt)
+library(lubridate)
+library(cowplot)
+library(plotly)
+library(scales)
 ```
 
 ## Introduction
 
-This project uses public data to analyze the Indiana Metro Police Department's use of force since 2014. I used data from the OpenIndy Data Portal, part of Mayor Joe Hogsett's 'Disclose Indy' initative to ensure public access to Indianapolis' public records. No law requires the disclosure of police data across the state of Indiana as a whole (even though state law requires police departments to be open with their data), but this shortcoming will be discussed later.
+This project uses public data to analyze the Indiana Metro Police Department's use of force since 2014. I used data from the OpenIndy Data Portal, part of Mayor Joe Hogsett's 'Disclose Indy' initative to ensure public access to Indianapolis' public records. No law requires the disclosure of police data across the state of Indiana as a whole.
 
-## Data Cleaning
+## A Few Notes on Data Cleaning
 
 Specifically, I used the following source: http://data.indy.gov/datasets/impd-complaints/data.
 
-A few notes on structural changes I made to filter data: I downloaded the data directly from the site, but had to reformat it and remove duplicate rows, as it appears multiple reports were sometimes filed about the same instance (I reached out to OpenIndy and the IMPD to get clarification on this, but I'll leave the data as is until I receive information proving my theory wrong). Also, it appears that every type of force is counted as an instance- for example, if the same officer uses both a taser and physical pressure on the same citizen, that is logged as two separate instances. I kept this structural organization of the data, as I feel it is critical to include every instance that officers saw fit to log.
+A few notes on structural changes made to filter data: data was downloaded directly from the site, but needed to be reformatted. Duplicate rows were removed, as it appears multiple reports were sometimes filed about the same instance (I reached out to OpenIndy and the IMPD to get clarification on this, but I'll leave the data as is until I receive information proving my assumption wrong). Also, it appears that every type of force is counted as an instance- for example, if the same officer uses both a taser and physical pressure on the same citizen, that is logged as two separate instances. I kept this structural organization of the data, as I feel it is critical to include every instance that officers saw fit to log.
 
-I also re-named several columns in order to more directly convey their meaning. All told, there are 21,893 relevant instances in the data, which range from the beginning of 2014 to May 27, 2020 (I downloaded the data on June 1). Each instance has information on: the date, IMPD division, district, disposition, street number and name, type of force used, reason for use of force, circumstances of the officer's involvement (service), details on the arrest, injury, or hospitalization of the citizen, injury or hospitalization of the officer,  demographic information on both parties, and the officer's ID number.
+I also re-named several columns in order to more directly convey their meaning. All told, there are 20,623 relevant instances in the data, which range from the beginning of 2014 to May 27, 2020 (I downloaded the data on June 1). Each instance has information on: the date, IMPD division, district, disposition, street number and name, type of force used, reason for use of force, circumstances of the officer's involvement (service), details on the arrest, injury, or hospitalization of the citizen, injury or hospitalization of the officer,  demographic information on both parties, and the officer's ID number.
+
+Even with this cleaning, many issues remain with the data itself- thousands of instances are incompletely reported, analysis of the data over time indicates that data hasn't been fully reported from year to year (as can be seen in the 'Use of Force Over Time' section). Although this data is incomplete and flawed, though, it is still useful to conduct aggregate analysis in order to identify systemic trends.
 
 ```{r read_data}
 raw_data <- read.csv("IMPD_Use_Of_Force.csv") %>%
@@ -55,9 +61,7 @@ clean_data <- raw_data %>%
   mutate(officer_sex = as.character(off_sex)) %>%
   mutate(officer_age = as.character(off_age)) %>%
   mutate(officer_years_employed = as.numeric(off_yr_employ)) %>%
-  select(incident_num, date, division, district, disposition, street_num, street_name, type_of_force, reason_for_force, service,
-         citizen_arrested, citizen_weapon, citizen_injured, citizen_hospitalized, officer_injured, officer_hospitalized, citizen_race,
-         citizen_sex, officer_number, officer_race, officer_sex, officer_age, officer_years_employed)
+  select(incident_num, date, officer_number, division, district, disposition, street_num, street_name, type_of_force, reason_for_force, service, citizen_arrested, citizen_weapon, citizen_injured, citizen_hospitalized, officer_injured, officer_hospitalized, citizen_race, citizen_sex, officer_race, officer_sex, officer_age, officer_years_employed)
 
 # remove duplicate rows
 
@@ -68,65 +72,91 @@ clean_data <- unique(clean_data)
 Here is a sample of rows from the data:
 
 ```{r display_data, include = TRUE}
-clean_data %>%
+sample_data <- clean_data %>%
   head(5) %>%
   gt()
 ```
 
 ## Overview
 
-First 
 https://citybase-cms-prod.s3.amazonaws.com/d95654f9a1234d87afd0724cc65172c9.pdf
 ```{r impd_demo_bar}
+#DEMOGRAPHICS OF IMPD
+
 impd_demo_data <- tibble(race = c("Asian", "Hispanic", "Black", "White"), percent = c(0.1, 3.0, 16.0, 79.6))
 impd_demo_bar <- impd_demo_data %>%
-  ggplot(aes(x = reorder(race, percent), y = percent, fill = c("cadetblue1", "lightcoral", "khaki", "lightgreen"))) +
+  ggplot(aes(x = reorder(race, percent), y = percent, fill = race)) +
   geom_bar(stat = "identity") +
-  theme(legend.position = "onenone") +
-  ylim(0, 85) +
+  theme(legend.position = "none") +
   geom_text(aes(label=percent), hjust=-0.15, size=3.5) + 
-  labs(x = "Race", y = "Percent of IMPD Force") +
+  labs(x = "", title = "Racial Demographics of IMPD Force", y = "Percent of IMPD Force") +
   coord_flip()
-# TODO: Fix colors
 ```
 
 ```{r indy_demo_bar, include = TRUE}
+# DEMOGRAPHICS OF INDIANAPOLIS
+
 indy_demo_data <- tibble(race = c("Asian", "Black", "Hispanic", "White"), percent = c(3.2, 28.3, 10.2, 61.4))
 indy_demo_bar <- indy_demo_data %>%
-  ggplot(aes(x = reorder(race, percent), y = percent, fill = c("cadetblue1", "lightcoral", "khaki", "lightgreen"))) +
+  ggplot(aes(x = reorder(race, percent), y = percent, fill = race)) +
   geom_bar(stat = "identity") +
-  theme(legend.position = "onenone") +
   geom_text(aes(label=percent), hjust=-0.15, size=3.5) + 
-  ylim(0, 85) +
-  labs(x = "Race", y = "Percent of Indianapolis Population") +
+  ylim(0, 82) +
+  theme(legend.position = "none") +
+  labs(x = "", y = "Percent of Indianapolis Population", title = "Racial Breakdown of Indianapolis") +
   coord_flip()
 ```
 
-
-```{r indy_demo_pie, include = TRUE}
-indy_race_data <- tibble(race = c("Asian", "Black", "Hispanic", "White"), percent = c(3.2, 28.3, 10.2, 61.4))
-pct <- round(indy_race_data$percent/sum(indy_race_data$percent)*100, 1)
-indy_race_data$race <- paste(indy_race_data$race, pct) # add percents to labels
-indy_race_data$race <- paste(indy_race_data$race,"%",sep="") # ad % to labels
-pie(indy_race_data$percent,labels = indy_race_data$race, col=c("cadetblue1", "lightcoral", "khaki", "lightgreen"),
-   main="Indianapolis Demographics") 
-```
 https://www.census.gov/quickfacts/fact/table/indianapoliscitybalanceindiana/PST045219#qf-headnote-a
 
 
-```{r use_of_force_demo_pie, include = TRUE}
 
-race_overview <- clean_data %>%
+```{r use_of_force_demo, include = TRUE}
+total_obs <- 20623
+
+# DEMOGRAPHICS OF USE OF FORCE
+
+race_overview_uof_plot <- clean_data %>%
   group_by(citizen_race) %>%
   summarize(count = n()) %>%
-  filter(citizen_race == "Asian" | citizen_race == "Black" | citizen_race == "Hispanic" | citizen_race == "White")
+  filter(citizen_race == "Asian" | citizen_race == "Black" | citizen_race == "Hispanic" | citizen_race == "White") %>%
+  mutate(percent = round(100*(count/total_obs), 1)) %>%
+  mutate(citizen_race = factor(citizen_race, levels = c("Asian", "Hispanic", "Black", "White"))) %>%
+  ggplot(aes(x = citizen_race, y = percent, fill = citizen_race)) +
+  geom_bar(stat = "identity") +
+  theme(legend.position = "none") +
+  geom_text(aes(label=percent), hjust=-0.15, size=3.5) + 
+  ylim(0, 70) +
+  labs(x = "", title = "IMPD Uses of Force By Race", y = "Percent") +
+  coord_flip()
 
-pct <- round(race_overview$count/sum(race_overview$count)*100, 1)
-race_overview$citizen_race <- paste(race_overview$citizen_race, pct) # add percents to labels
-race_overview$citizen_race <- paste(race_overview$citizen_race,"%",sep="") # ad % to labels
-pie(race_overview$count,labels = race_overview$citizen_race, col=c("cadetblue1", "lightcoral", "khaki", "lightgreen"),
-   main="IMPD Uses of Force") 
+# Indianapolis dempgraphics modified to fit scale of previous plot
+
+indy_demo_bar2 <- indy_demo_data %>%
+  ggplot(aes(x = reorder(race, percent), y = percent, fill = race)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label=percent), hjust=-0.15, size=3.5) + 
+  ylim(0, 70) +
+  theme(legend.position = "none") +
+  labs(x = "", y = "Percent of Indianapolis Population", title = "Racial Breakdown of Indianapolis") +
+  coord_flip()
+
 ```
+
+```{r time_bar, include = TRUE}
+yearly <- clean_data %>%
+  filter(citizen_race == "Black" | citizen_race == "White" | citizen_race == "Asian" | citizen_race == "Hispanic") %>%
+  mutate(year = year(date)) %>%
+  filter(year <= 2019) %>%
+  group_by(year, citizen_race) %>%
+  summarize(count = n())
+
+
+ggplot(yearly, aes(x = year, y = count, fill = citizen_race)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Instances of Force over Time by Race", x = "Year", y = "No. of instances")
+```
+
 
 
 ```{r types_of_force, include = TRUE}
@@ -134,10 +164,12 @@ use_of_force_chart <- clean_data %>%
   filter(type_of_force != "") %>%
   group_by(type_of_force) %>%
   summarize(count = n(), na.rm = TRUE) %>%
-  ggplot(aes(x = reorder(type_of_force, count), y = count)) +
+  ggplot(aes(x = reorder(type_of_force, -count), y = count)) +
   geom_bar(stat = "identity") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-  labs(x = "Type of Force Used", y = "Count", title = "IMPD Uses of Force by Type")
+  labs(x = "Type of Force Used", y = "Count", title = "IMPD Uses of Force by Type") +
+  geom_text(aes(label=count), vjust=.33, hjust = -0.3, size=2.5, angle = 90) +
+  ylim(0, 4700)
 
 #508 instances where type not reported
 ```
@@ -149,27 +181,75 @@ uof_data <- clean_data %>%
   summarize(count = n(), na.rm = TRUE) %>%
   arrange(-count)
 
-#for(i in 1:43){
-#  type <- uof_data[i, 1] %>%
-#    slice(1) %>%
-#    pull(1)
-#  count <- uof_data[i, 2] %>%
-#    slice(1) %>%
-#    pull(1)
-#  
-#  specific_pie_data <- clean_data %>%
-#  filter(type_of_force == type) %>%
-#  group_by(citizen_race) %>%
-#  summarize(count = n()) %>%
-#  filter(citizen_race == "Asian" | citizen_race == "Black" | citizen_race == "Hispanic" | citizen_race == "White")
-#
-#  pct <- round(specific_pie_data$count/sum(specific_pie_data$count)*100, 1)
-#  specific_pie_data$citizen_race <- paste(specific_pie_data$citizen_race, pct) # add percents to labels
-#  specific_pie_data$citizen_race <- paste(specific_pie_data$citizen_race,"%",sep="") # ad % to labels
-#  pie(specific_pie_data$count,labels = specific_pie_data$citizen_race, col = rainbow(length(specific_pie_data$citizen_race)),
-#  main=paste("Racial Breakdown: ", type, " (", count, " instances)", sep = "")) 
-#}
+# takes number i in list of types of force and outputs graph for that type
 
+uof_race_function <- function(i) {
+  type <- uof_data[i, 1] %>%
+    slice(1) %>%
+    pull(1)
+  count <- uof_data[i, 2] %>%
+    slice(1) %>%
+    pull(1)
+  
+  specific_data <- clean_data %>%
+    filter(type_of_force == type) %>%
+    group_by(citizen_race) %>%
+    summarize(count = n()) %>%
+    filter(citizen_race == "Black" | citizen_race == "White" | citizen_race == "Asian" | citizen_race == "Hispanic")
+
+  asian_add <- c("Asian", 0)
+  black_add <- c("Black", 0)
+  hispanic_add <- c("Hispanic", 0)
+  white_add <- c("White", 0)
+  
+  new_data <- specific_data
+  
+  if ("Asian" %in% new_data$citizen_race == FALSE){
+    new_data <- rbind(new_data, asian_add)
+  }
+  if ("Black" %in% new_data$citizen_race == FALSE){
+    new_data <- rbind(new_data, black_add)
+  }
+  if ("Hispanic" %in% new_data$citizen_race == FALSE){
+    new_data <- rbind(new_data, hispanic_add)
+  }
+  if ("White" %in% new_data$citizen_race == FALSE){
+    new_data <- rbind(new_data, white_add)
+  }
+  
+   new_data <- new_data %>%
+    mutate(citizen_race = factor(citizen_race, levels = c("Asian", "Black", "Hispanic", "White")))
+  
+  a <- new_data[1,2] %>%
+    pull(1)
+  b <- new_data[2,2] %>%
+    pull(1)
+  h <- new_data[3,2] %>%
+    pull(1)
+  w <- new_data[4,2] %>%
+    pull(1)
+  
+  a <- as.numeric(a)
+  b <- as.numeric(b)
+  h <- as.numeric(h)
+  w <- as.numeric(w)
+  
+  total <- a + b + h + w
+  
+  graph <- new_data %>%
+    ggplot(aes(x = citizen_race, y = as.numeric(count), fill = citizen_race)) +
+    geom_bar(stat = "identity") +
+    geom_segment(aes(x = 0.5, xend = 1.5, y = total*.003, yend = total*.003)) +
+    geom_segment(aes(x = 1.5, xend = 2.5, y = total*.556, yend = total*.556)) +
+    geom_segment(aes(x = 2.5, xend = 3.5, y = total*.046, yend = total*.046)) +
+    geom_segment(aes(x = 3.5, xend = 4.5, y = total*.395, yend = total*.395)) +
+    labs(title = paste("Force Type: ", type, "Racial Breakdown (", count, " instances)", sep = ""), x = "Citizen Race", y = "Count", subtitle = "Lines on every graph represent baseline proportion of overall uses of force")
+  
+  print(graph)
+}
+
+
+uof_race_function(1)
 
 for(i in 1:43){
   type <- uof_data[i, 1] %>%
@@ -190,71 +270,187 @@ for(i in 1:43){
   hispanic_add <- c("Hispanic", 0)
   white_add <- c("White", 0)
   
+  new_data <- specific_data
   
-  if(length(specific_data$citizen_race) == 4){
-    new_data <- specific_data
+  if ("Asian" %in% new_data$citizen_race == FALSE){
+    new_data <- rbind(new_data, asian_add)
   }
-  else if ("Asian" %in% specific_data$citizen_race == FALSE){
-    new_data <- rbind(specific_data, asian_add)
+  if ("Black" %in% new_data$citizen_race == FALSE){
+    new_data <- rbind(new_data, black_add)
   }
-  else if ("Black" %in% specific_data$citizen_race == FALSE){
-    new_data <- rbind(specific_data, black_add)
+  if ("Hispanic" %in% new_data$citizen_race == FALSE){
+    new_data <- rbind(new_data, hispanic_add)
   }
-  else if ("Hispanic" %in% specific_data$citizen_race == FALSE){
-    new_data <- rbind(specific_data, hispanic_add)
-  }
-  else if ("White" %in% specific_data$citizen_race == FALSE){
-    new_data <- rbind(specific_data, white_add)
+  if ("White" %in% new_data$citizen_race == FALSE){
+    new_data <- rbind(new_data, white_add)
   }
   
-  max <- new_data %>%
-    arrange(-as.numeric(count)) %>%
-    slice(1) %>%
-    pull(2)
+   new_data <- new_data %>%
+    mutate(citizen_race = factor(citizen_race, levels = c("Asian", "Black", "Hispanic", "White")))
+  
+  a <- new_data[1,2] %>%
+    pull(1)
+  b <- new_data[2,2] %>%
+    pull(1)
+  h <- new_data[3,2] %>%
+    pull(1)
+  w <- new_data[4,2] %>%
+    pull(1)
+  
+  a <- as.numeric(a)
+  b <- as.numeric(b)
+  h <- as.numeric(h)
+  w <- as.numeric(w)
+  
+  total <- a + b + h + w
   
   graph <- new_data %>%
     ggplot(aes(x = citizen_race, y = as.numeric(count), fill = citizen_race)) +
     geom_bar(stat = "identity") +
-    labs(title = paste("Racial Breakdown for Force Type: ", type, " (", count, " instances)", sep = ""), x = "Citizen Race", y = "Count") +
-    ylim(0, max)
-  
-  print(graph)
+    geom_segment(aes(x = 0.5, xend = 1.5, y = total*.003, yend = total*.003)) +
+    geom_segment(aes(x = 1.5, xend = 2.5, y = total*.556, yend = total*.556)) +
+    geom_segment(aes(x = 2.5, xend = 3.5, y = total*.046, yend = total*.046)) +
+    geom_segment(aes(x = 3.5, xend = 4.5, y = total*.395, yend = total*.395)) +
+    labs(title = paste("Racial Breakdown for Force Type: ", type, " (", count, " instances)", sep = ""), x = "Citizen Race", y = "Count")
 }
 
 ```
 
 
+```{r data_analysis, include = TRUE}
 
-```{r data_analysis}
-officer_years <- clean_data %>%
-  group_by(officer_number) %>%
-  select(officer_number, officer_years_employed)
+# CALENDAR HEATMAP CREATOR
 
-officers <- clean_data %>%
-  group_by(officer_number) %>%
-  summarize(uses_of_force = n()) %>%
-  arrange(-uses_of_force)
+# get data from every day
 
-clean_data %>%
-  filter(officer_number == 1814) %>%
-  arrange(desc(date))
+daily <- clean_data %>%
+  mutate(Date = date) %>%
+  select(Date) %>%
+  group_by(Date) %>%
+  summarize(Instances = n())
 
+daily_data <- daily %>%
+  mutate(year = year(Date),
+         month = month(Date, label = TRUE),
+         wkday = fct_relevel(wday(Date, label=TRUE),
+                             c("Mon", "Tue","Wed","Thu","Fri","Sat","Sun")),
+         day = day(Date),
+         wk = format(Date, "%W")) %>%
+  filter(!is.na(year)) %>%
+  select(Date, year, month, wkday, day, wk, Instances) %>%
+  ggplot(aes(wk, wkday, fill = Instances, Date = Date)) +
+  geom_tile() +
+  scale_fill_gradient(low = "lightgreen", high = "orange") +
+  geom_text(aes(label=Instances), size = 3) +
+  labs(x = "", y = "", title = "Calendar Map of Use of Force", fill = "Instances", subtitle = "Number on Square is How Many Instances Were Used That Day") +
+  theme(panel.background = element_blank(),
+            axis.ticks = element_blank(),
+            axis.text.x = element_blank(),
+            strip.background = element_rect("grey92")
+            ) +
+     facet_grid(year~month, scales="free", space="free")
 
-clean_data %>%
-  group_by(type_of_force) %>%
-  summarize(count = n())
+daily_data_interactive <- ggplotly(daily_data, tooltip = c("Date", "fill"))
 
-
-lethal_data <- clean_data %>%
-  filter(type_of_force == "Lethal-Handgun" | type_of_force == "Lethal-Knife" | type_of_force == "Lethal-Vehicle")
-
-lethal_data %>%
-  group_by(officer_number) %>%
-  summarize(count = n()) %>%
-  arrange(-count)
-
-offcier_3472 <- clean_data %>%
-  filter(officer_number == 3472)
 ```
+
+```{r racial_analysis, include = TRUE}
+
+# OFFICER/CITIZEN RACE HEATMAPS
+
+# heatmap of observed race matrix
+
+racial_data <- clean_data %>%
+  select(citizen_race, officer_race) %>%
+  filter(citizen_race == "Black" | citizen_race == "White" | citizen_race == "Asian" | citizen_race == "Hispanic") %>%
+  filter(officer_race == "Black" | officer_race == "White" | officer_race == "Asian" | officer_race == "Hispanic") %>%
+  group_by(citizen_race, officer_race) %>%
+  summarize(count = n()) %>%
+  ungroup() %>%
+  add_row(citizen_race = "Asian", officer_race = "Asian", count = 0) %>%
+  add_row(citizen_race = "Hispanic", officer_race = "Asian", count = 0)
+
+observed_plot <- racial_data %>%
+  ggplot(aes(x = citizen_race, y = officer_race, fill = count, color = "black")) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "orange2") +
+  geom_text(aes(label=count), size = 4, color = "black") + 
+  theme(legend.position = "none") + 
+  labs(x = "Citizen Race", y = "Officer Race")
+
+
+racial_data <- racial_data %>%
+  arrange(citizen_race, officer_race)
+
+b <- 20264
+
+# Baseline matrix if distribution is assumed to be even across general use of force data
+
+racial_baseline_uof <- tibble(citizen_race = c("Asian", "Asian", "Asian", "Asian",
+                                               "Black", "Black", "Black", "Black",
+                                               "Hispanic", "Hispanic", "Hispanic", "Hispanic",
+                                               "White", "White", "White", "White"),
+                              officer_race = c("Asian", "Black", "Hispanic", "White",
+                                               "Asian", "Black", "Hispanic", "White",
+                                               "Asian", "Black", "Hispanic", "White",
+                                               "Asian", "Black", "Hispanic", "White"),
+                              count = c(.000003*b, .00048*b, .00009*b, .0024*b,
+                                        .00056*b, .089*b, .00736*b, .443*b,
+                                        .000046*b, .00736*b, .01668*b, .0366*b,
+                                        .000395*b, .0632*b, .0119*b, .3144*b)
+                              )
+
+                              )
+
+uof_base_plot <- racial_baseline_uof %>%
+  ggplot(aes(x = citizen_race, y = officer_race, fill = count, color = "black")) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "orange2") +
+  geom_text(aes(label=count), size = 4, color = "black") + 
+  theme(legend.position = "none") + 
+  labs(x = "Citizen Race", y = "Officer Race")
+
+
+# Baseline matrix if distribution is assumed to be even across general Indianapolis population
+
+
+racial_baseline_indy <- tibble(citizen_race = c("Asian", "Asian", "Asian", "Asian",
+                                               "Black", "Black", "Black", "Black",
+                                               "Hispanic", "Hispanic", "Hispanic", "Hispanic",
+                                               "White", "White", "White", "White"),
+                              officer_race = c("Asian", "Black", "Hispanic", "White",
+                                               "Asian", "Black", "Hispanic", "White",
+                                               "Asian", "Black", "Hispanic", "White",
+                                               "Asian", "Black", "Hispanic", "White"),
+                              count = c(.000032*b, .00512*b, .00096*b, .0255*b,
+                                        .000283*b, .0453*b, .00849*b, .225*b,
+                                        .000102*b, .01632*b, .00306*b, .0812*b,
+                                        .000614*b, .0984*b, .0184*b, .4887*b)
+                              )
+
+indy_base_plot <- racial_baseline_indy %>%
+  ggplot(aes(x = citizen_race, y = officer_race, fill = count, color = "black")) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "orange2") +
+  geom_text(aes(label=count), size = 4, color = "black") + 
+  theme(legend.position = "none") + 
+  labs(x = "Citizen Race", y = "Officer Race")
+
+
+# loss function
+
+total <- 0
+
+for (i in 1:16){
+  o <- racial_data[i,3] %>%
+    pull(1)
+  e <- racial_baseline_uof[i,3] %>%
+    pull(1)
+  temp <- (o - e)
+  total <- temp + total
+}
+```
+
+
 
 
