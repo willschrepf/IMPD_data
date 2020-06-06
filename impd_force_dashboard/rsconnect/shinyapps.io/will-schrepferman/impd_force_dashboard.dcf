@@ -1,0 +1,12 @@
+name: impd_force_dashboard
+title: impd_force_dashboard
+username:
+account: will-schrepferman
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2414995
+bundleId: 3233681
+url: https://will-schrepferman.shinyapps.io/impd_force_dashboard/
+when: 1591379969.83769
+asMultiple: FALSE
+asStatic: FALSE

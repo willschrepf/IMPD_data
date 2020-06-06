@@ -25,7 +25,7 @@ This project uses public data to analyze the Indiana Metro Police Department's u
 
 Specifically, I used the following source: http://data.indy.gov/datasets/impd-complaints/data.
 
-A few notes on structural changes made to filter data: data was downloaded directly from the site, but needed to be reformatted. Duplicate rows were removed, as it appears multiple reports were sometimes filed about the same instance (I reached out to OpenIndy and the IMPD to get clarification on this, but I'll leave the data as is until I receive information proving my assumption wrong). Also, it appears that every type of force is counted as an instance- for example, if the same officer uses both a taser and physical pressure on the same citizen, that is logged as two separate instances. I kept this structural organization of the data, as I feel it is critical to include every instance that officers saw fit to log.
+A few notes on structural changes made to filter data: data was downloaded directly from the site, but needed to be reformatted. Duplicate rows were removed, as it appears multiple reports were sometimes filed about the same instance (OpenIndy and the IMPD were contacted to get clarification on this, but the data will remain as is until information is received proving these assumptions wrong). Also, it appears that every type of force is counted as an instance- for example, if the same officer uses both a taser and physical pressure on the same citizen, that is logged as two separate instances. As mentioned before, this structural organization of the data was maintained, as it seemed critical to include every instance that officers saw fit to log.
 
 I also re-named several columns in order to more directly convey their meaning. All told, there are 20,623 relevant instances in the data, which range from the beginning of 2014 to May 27, 2020 (I downloaded the data on June 1). Each instance has information on: the date, IMPD division, district, disposition, street number and name, type of force used, reason for use of force, circumstances of the officer's involvement (service), details on the arrest, injury, or hospitalization of the citizen, injury or hospitalization of the officer,  demographic information on both parties, and the officer's ID number.
 
@@ -243,76 +243,32 @@ uof_race_function <- function(i) {
     geom_segment(aes(x = 1.5, xend = 2.5, y = total*.556, yend = total*.556)) +
     geom_segment(aes(x = 2.5, xend = 3.5, y = total*.046, yend = total*.046)) +
     geom_segment(aes(x = 3.5, xend = 4.5, y = total*.395, yend = total*.395)) +
-    labs(title = paste("Force Type: ", type, "Racial Breakdown (", count, " instances)", sep = ""), x = "Citizen Race", y = "Count", subtitle = "Lines on every graph represent baseline proportion of overall uses of force")
+    labs(title = paste("Force Type: ", type, "\nRacial Breakdown (", count, " instances)", sep = ""), x = "Citizen Race", y = "Count")
   
   print(graph)
 }
 
 
-uof_race_function(1)
+g1 <- uof_race_function(1)
+g2 <- uof_race_function(2)
+g3 <- uof_race_function(3)
+g4 <- uof_race_function(4)
+g5 <- uof_race_function(5)
+g6 <- uof_race_function(6)
+g7 <- uof_race_function(7)
+g8 <- uof_race_function(8)
+g9 <- uof_race_function(9)
+g10 <- uof_race_function(10)
+g11 <- uof_race_function(11)
+g12 <- uof_race_function(12)
+g13 <- uof_race_function(13)
+g14 <- uof_race_function(14)
+g15 <- uof_race_function(15)
+g16 <- uof_race_function(16)
+g17 <- uof_race_function(17)
+g18 <- uof_race_function(18)
 
-for(i in 1:43){
-  type <- uof_data[i, 1] %>%
-    slice(1) %>%
-    pull(1)
-  count <- uof_data[i, 2] %>%
-    slice(1) %>%
-    pull(1)
-  
-  specific_data <- clean_data %>%
-    filter(type_of_force == type) %>%
-    group_by(citizen_race) %>%
-    summarize(count = n()) %>%
-    filter(citizen_race == "Black" | citizen_race == "White" | citizen_race == "Asian" | citizen_race == "Hispanic")
-
-  asian_add <- c("Asian", 0)
-  black_add <- c("Black", 0)
-  hispanic_add <- c("Hispanic", 0)
-  white_add <- c("White", 0)
-  
-  new_data <- specific_data
-  
-  if ("Asian" %in% new_data$citizen_race == FALSE){
-    new_data <- rbind(new_data, asian_add)
-  }
-  if ("Black" %in% new_data$citizen_race == FALSE){
-    new_data <- rbind(new_data, black_add)
-  }
-  if ("Hispanic" %in% new_data$citizen_race == FALSE){
-    new_data <- rbind(new_data, hispanic_add)
-  }
-  if ("White" %in% new_data$citizen_race == FALSE){
-    new_data <- rbind(new_data, white_add)
-  }
-  
-   new_data <- new_data %>%
-    mutate(citizen_race = factor(citizen_race, levels = c("Asian", "Black", "Hispanic", "White")))
-  
-  a <- new_data[1,2] %>%
-    pull(1)
-  b <- new_data[2,2] %>%
-    pull(1)
-  h <- new_data[3,2] %>%
-    pull(1)
-  w <- new_data[4,2] %>%
-    pull(1)
-  
-  a <- as.numeric(a)
-  b <- as.numeric(b)
-  h <- as.numeric(h)
-  w <- as.numeric(w)
-  
-  total <- a + b + h + w
-  
-  graph <- new_data %>%
-    ggplot(aes(x = citizen_race, y = as.numeric(count), fill = citizen_race)) +
-    geom_bar(stat = "identity") +
-    geom_segment(aes(x = 0.5, xend = 1.5, y = total*.003, yend = total*.003)) +
-    geom_segment(aes(x = 1.5, xend = 2.5, y = total*.556, yend = total*.556)) +
-    geom_segment(aes(x = 2.5, xend = 3.5, y = total*.046, yend = total*.046)) +
-    geom_segment(aes(x = 3.5, xend = 4.5, y = total*.395, yend = total*.395)) +
-    labs(title = paste("Racial Breakdown for Force Type: ", type, " (", count, " instances)", sep = ""), x = "Citizen Race", y = "Count")
-}
+types_grid <- plot_grid(g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, g11, g12, g13, g14, g15, g16, g17, g18, nrow = 6, ncol = 6)
 
 ```
 
@@ -398,9 +354,11 @@ racial_baseline_uof <- tibble(citizen_race = c("Asian", "Asian", "Asian", "Asian
                                         .00056*b, .089*b, .00736*b, .443*b,
                                         .000046*b, .00736*b, .01668*b, .0366*b,
                                         .000395*b, .0632*b, .0119*b, .3144*b)
-                              )
+                              ) %>%
+    mutate(count = round(count, 1))
 
-                              )
+
+                            
 
 uof_base_plot <- racial_baseline_uof %>%
   ggplot(aes(x = citizen_race, y = officer_race, fill = count, color = "black")) +
@@ -408,7 +366,7 @@ uof_base_plot <- racial_baseline_uof %>%
   scale_fill_gradient(low = "white", high = "orange2") +
   geom_text(aes(label=count), size = 4, color = "black") + 
   theme(legend.position = "none") + 
-  labs(x = "Citizen Race", y = "Officer Race")
+  labs(x = "Citizen Race", y = "Officer Race", title = "Use of Force Distribution Baseline")
 
 
 # Baseline matrix if distribution is assumed to be even across general Indianapolis population
@@ -426,7 +384,8 @@ racial_baseline_indy <- tibble(citizen_race = c("Asian", "Asian", "Asian", "Asia
                                         .000283*b, .0453*b, .00849*b, .225*b,
                                         .000102*b, .01632*b, .00306*b, .0812*b,
                                         .000614*b, .0984*b, .0184*b, .4887*b)
-                              )
+                              ) %>%
+  mutate(count = round(count, 1))
 
 indy_base_plot <- racial_baseline_indy %>%
   ggplot(aes(x = citizen_race, y = officer_race, fill = count, color = "black")) +
@@ -434,7 +393,7 @@ indy_base_plot <- racial_baseline_indy %>%
   scale_fill_gradient(low = "white", high = "orange2") +
   geom_text(aes(label=count), size = 4, color = "black") + 
   theme(legend.position = "none") + 
-  labs(x = "Citizen Race", y = "Officer Race")
+  labs(x = "Citizen Race", y = "Officer Race", title = "Indianapolis Population Baseline")
 
 
 # loss function
@@ -449,7 +408,21 @@ for (i in 1:16){
   temp <- (o - e)
   total <- temp + total
 }
+
+
+expected_dst <- plot_grid(indy_base_plot, uof_base_plot, nrow = 1, ncol = 2)
+
+
+clean_data %>%
+  group_by(officer_number) %>%
+  summarize(n = n()) %>%
+  arrange(-n)
+
+
+clean_dt <- clean_data %>%
+  select(date, officer_number, district, street_num, street_name, type_of_force, citizen_arrested, citizen_hospitalized, officer_hospitalized, citizen_race, citizen_sex, officer_race, officer_sex)
 ```
+
 
 
 
