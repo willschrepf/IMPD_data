@@ -362,14 +362,18 @@ ui <- fluidPage(
                 h1("Introduction"),
                 h1("Indianapolis Metro Police Department - Use of Force Dashboard"),
                 p("This project uses public data to analyze the Indiana Metro Police Department's use of force since 2014. It uses data  from the OpenIndy Data Portal, part of Mayor Joe Hogsett's 'Disclose Indy' initative to ensure public access to Indianapolis' public records. The use of force is a sometimes-necessary way for a police department to conduct its operations, but a data-driven aggregate analysis of how officers use force is critical to identifying potential systemic biases, particularly across the dimension of race."),
+                p("In order to identify biases, this project analyzes the IMPD's demographics as it relates to use of force, use of force over time, the types of force it uses, and the impact of officer race on use of force distributions; it also provides a searchable database of all uses of force by officer ID number and other factors. Finally, it includes notes on data cleaning and more information in the 'About' page for those interested in how this project was put together."),
                 a(href = "https://www.indystar.com/story/news/local/indianapolis/2020/06/05/indianapolis-police-impd-submits-draft-new-use-force-policy/3155833001/", "Additionally, here is an updated version of the IMPD's use of force policy for reference."),
                 p(""),
-                p("In order to identify biases, this project analyzes the IMPD's demographics as it relates to use of force, use of force over time, the types of force it uses, and the impact of officer race on use of force distributions; it also provides a searchable database of all uses of force by officer ID number and other factors. Finally, it includes notes on data cleaning and more information in the 'About' page for those interested in how this project was put together."),
-                h2("The Data:"),
-                p("The data provided by IMPD is far from perfect- there were many duplicates, incomplete fields, and unclear variable names. However, the data was cleaned for maximum usability. The primary unit of the data is an instance of violence- some incidents contain more than one use of force, but every instance of use is recorded separately. This is how the IMPD saw fit to record the data, so that structure was kept for analaysis. The specifics of how the data was cleaned can be found in the 'Notes on Data Cleaning' Section, but here are a few sample rows of the cleaned data used:"),
-                tableOutput("tbl"),
-                a(href = "http://data.indy.gov/datasets/be9ec4331d0242c6994a256073be772f_16", "Here is the OpenIndy data source."),
+                h1("Key Findings:"),
+                h3("All of this information and more can be found by navigating the tabs at the top of this site."),
+                h3("1. The IMPD is far from representative of the city of Indianapolis."),
+                h3("2. The IMPD's use of force across racial demographics is significantly biased against black citizens."),
+                h3("3. White officers use force significantly more than others, particularly against black citizens."),
+                h3("4. The incomplete and unstandardized nature of the IMPD's data makes analysis of trends across type of force and time difficult."),
                 p(""),
+                p(""),
+                a(href = "https://github.com/willschrepf/IMPD_data", "All of this project's code is available on GitHub.")
                 ),
         tabPanel("Demographics of the Use of Force",
                  titlePanel("Demographics of the Use of Force"),
@@ -385,7 +389,7 @@ ui <- fluidPage(
                  p("Next, let's compare the demographics of the the use of force across citizens' race compared to Indianapolis as a whole."),
                  plotOutput("race_overview_uof_plot", width = "750px"),
                  plotOutput("indy_demo_bar2", width = "750px"),
-                 h3("The distribution of the IMPD's use of force is drastically different that the racial distribution of Indianapolis as a whole. Black citizens are nearly twice as likely to have force used on them relative to their representation in the population of Indianapolis- they make up 28.3 percent of Indianapolis' population, yet account for 55.6 percent of the IMPD's uses of force.")
+                 h3("The distribution of the IMPD's use of force is drastically different than the racial distribution of Indianapolis as a whole. Black citizens are nearly twice as likely to have force used on them relative to their representation in the population of Indianapolis- they make up 28.3 percent of Indianapolis' population, yet account for 55.6 percent of the IMPD's uses of force.")
                  ),
         tabPanel("Types of Force",
                 titlePanel("Types of Force"),
@@ -406,7 +410,7 @@ ui <- fluidPage(
                  h2("Actual Distribution"),
                  p("Here is the actual, observed distribution of force across citizen and officer race."),
                  plotOutput("observed_plot", width = "750px"),
-                 h3("These results make clear that no matter which baseline is used, white officers use force on citizens of all races than officers of other races. Compared to Indianapolis as a whole, white officers use force on black citizens 103% more than is expected.")
+                 h3("These results make clear that no matter which baseline is used, white officers use force on citizens of all races significantly more than officers of other races. Compared to Indianapolis as a whole, white officers use force on black citizens 103% more than is expected.")
                  ),
         tabPanel("Uses of Force Over Time",
                  h1("Uses of Force Over Time"),
@@ -421,7 +425,8 @@ ui <- fluidPage(
                  titlePanel("Search Database"),
                  h3("Search through the data by any column using the bar on the right."),
                  h3("This dataset notably excludes officer names- it does not appear that the IMPD makes this information public."),
-                 dataTableOutput("search_table")
+                 dataTableOutput("search_table"),
+                 a(href = "http://data.indy.gov/datasets/be9ec4331d0242c6994a256073be772f_16", "Here is the OpenIndy data source.")
                  ),
         tabPanel("Notes on Data Cleaning",
                  titlePanel("Notes on Data Cleaning"),
@@ -432,7 +437,8 @@ ui <- fluidPage(
                  ),
         tabPanel("About",
                  titlePanel("About"),
-                 h3("TODO"))
+                 h3("This project was developed by Will Schrepferman, a Harvard student studying Government + Data Science. He can be reached at willschrepferman@college.harvard.edu."),
+                 p("This work is intended to provide both the public and police with an example of what data-driven policing can look like. Transparency and easy-to-understand communication of the data behind the IMPD's use of force is useful in order to ensure accountability. Additionally, having standardized, quality data performance indicators is critical for police to evaluate the efficacy of policy changes with regard to implicit bias, deescelation, and more."))
     )
 )
 
