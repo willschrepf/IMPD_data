@@ -446,7 +446,7 @@ ui <- fluidPage(
 ## searchable DT
 
 clean_dt <- clean_data %>%
-    select(date, officer_number, district, street_num, street_name, type_of_force, citizen_arrested, citizen_hospitalized, officer_hospitalized, citizen_race, citizen_sex, officer_race, officer_sex)
+    select(date, officer_number, district, disposition, street_num, street_name, type_of_force, reason_for_force, citizen_arrested, citizen_hospitalized, officer_hospitalized, citizen_race, citizen_sex, officer_race, officer_sex, officer_years_employed)
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {

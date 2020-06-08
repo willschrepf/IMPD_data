@@ -15,6 +15,7 @@ library(lubridate)
 library(cowplot)
 library(plotly)
 library(scales)
+library(readxl)
 ```
 
 ## Introduction
@@ -67,6 +68,10 @@ clean_data <- raw_data %>%
 
 clean_data <- unique(clean_data) 
 
+clean_dt <- clean_data %>%
+      select(date, officer_number, district, disposition, street_num, street_name, type_of_force, reason_for_force, citizen_arrested, citizen_hospitalized, officer_hospitalized, citizen_race, citizen_sex, officer_race, officer_sex, officer_years_employed)
+
+write_excel_csv(clean_dt, "clean-data")
 ```
 
 Here is a sample of rows from the data:
